@@ -35,7 +35,7 @@ func (fm *FileMgr) Read(blockID *BlockID, p *Page) (int, error) {
 
 	n, err := f.ReadAt(p.Bytes(), int64(blockID.Number*fm.blockSize))
 	if err != nil && err.Error() != "EOF" {
-		return 0, fmt.Errorf("failed to read file: %v", err)
+		return 0, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	return n, nil
@@ -53,7 +53,7 @@ func (fm *FileMgr) Write(blockID *BlockID, p *Page) (int, error) {
 
 	n, err := f.WriteAt(p.Bytes(), int64(blockID.Number*fm.blockSize))
 	if err != nil && err.Error() != "EOF" {
-		return 0, fmt.Errorf("failed to read file: %v", err)
+		return 0, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	return n, nil
@@ -67,7 +67,7 @@ func (fm *FileMgr) Close() error {
 	for _, f := range fm.openedFiles {
 		err := f.Close()
 		if err != nil {
-			return fmt.Errorf("failed to close file: %v", err)
+			return fmt.Errorf("failed to close file: %w", err)
 		}
 	}
 
@@ -86,7 +86,7 @@ func (fm *FileMgr) getFile(filename string) (*os.File, error) {
 		// 0666 sets the file permissions to be readable and writable by all users.
 		f, err = os.OpenFile(filepath.Join(fm.dataDir, filename), os.O_RDWR|os.O_CREATE|os.O_SYNC, 0666)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open file: %v", err)
+			return nil, fmt.Errorf("failed to open file: %w", err)
 		}
 		fm.openedFiles[filename] = f
 	}
