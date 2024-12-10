@@ -6,9 +6,11 @@ The idea is to implement SimpleDB in Go (mostly) following the mentioned book as
 
 ## TODO
 
-- [x] File Manager
-- [ ] Memory Management
-- [ ] Transaction Management
+- [x] File Manager ([video](https://youtu.be/kj4ABYRI_NA))
+- [ ] Log Manager
+- [ ] Buffer Manager
+- [ ] Concurrency Manager
+- [ ] Recovery Manager
 - [ ] Record Management
 - [ ] Metadata Management
 - [ ] Query Processor
