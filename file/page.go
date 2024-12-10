@@ -24,9 +24,9 @@ func (p *Page) Write(offset int, data []byte) (int, error) {
 	return n, nil
 }
 
-// Read copies data from the page at the specified offset and writes it to the dst slice.
-func (p *Page) Read(offset int, dst []byte) int {
-	return copy(dst, p.bytes[offset:])
+// Read copies data from the page at the specified offset and writes it to the data slice.
+func (p *Page) Read(offset int, data []byte) int {
+	return copy(data, p.bytes[offset:])
 }
 
 func (p *Page) Bytes() []byte {
