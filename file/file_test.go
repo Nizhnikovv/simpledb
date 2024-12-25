@@ -42,6 +42,21 @@ func TestFileMgrWriteRead(t *testing.T) {
 	checkWrite(t, mgr, blockZero, data)
 	checkRead(t, mgr, blockZero, data)
 	checkFileContent(t, filepath.Join(dataDir, testFile), "ccccccccccccccccbbbbbbbbbbbbbbbb")
+
+	blockTen := &BlockID{
+		Filename: testFile,
+		Number:   10,
+	}
+	_, err := mgr.Write(blockTen, NewPage(blockSize))
+	if err == nil || err.Error() != ErrBlockOutOfBound.Error() {
+		t.Fatalf("Write should fail with block number greater than file size")
+	}
+	checkFileContent(t, filepath.Join(dataDir, testFile), "ccccccccccccccccbbbbbbbbbbbbbbbb")
+
+	_, err = mgr.Read(blockTen, NewPage(blockSize))
+	if err == nil || err.Error() != ErrBlockOutOfBound.Error() {
+		t.Fatalf("Read should fail with block number greater than file size")
+	}
 }
 
 func checkWrite(t *testing.T, mgr *FileMgr, blockID *BlockID, data string) {
