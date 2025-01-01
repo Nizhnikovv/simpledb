@@ -62,7 +62,7 @@ func NewLogMgr(fm *file.FileMgr, logFile string) *LogMgr {
 }
 
 // Log logs the record to the log page.
-func (lm *LogMgr) Log(record *record) error {
+func (lm *LogMgr) Log(record *Record) error {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
@@ -72,27 +72,30 @@ func (lm *LogMgr) Log(record *record) error {
 	offset := endian.Uint32(offsetBytes) // offset where the last record starts
 
 	buffCap := int(offset) - 4
-	if record.Length > buffCap {
+	if record.totalLength() > buffCap {
 		err := lm.Flush()
 		if err != nil {
 			return err
 		}
-
-		// create a new blockID by incrementing the block number
-		lm.currentBlock.Number++
 
 		// We can reuse the existing log page and overwrite it with the new data,
 		// but a fresh page is created here for simplicity and ease of testing and inspection.
 		// The old page will be garbage collected.
 		lm.logPage = file.NewPage(lm.fm.BlockSize)
 
-		offset = uint32(lm.fm.BlockSize)
-		lm.logPage.WriteInt(0, int(offset))
+		// create a new blockID by incrementing the block number
+		lm.currentBlock.Number++
 		_, err = lm.fm.Write(lm.currentBlock, lm.logPage)
 		if err != nil {
 			return fmt.Errorf("failed to write log page: %w", err)
 		}
 
+
+		offset = uint32(lm.fm.BlockSize)
+		err = lm.logPage.WriteInt(0, int(offset))
+		if err != nil {
+			return fmt.Errorf("failed to write new offset: %w", err)
+		}
 	}
 
 	recPos := int(offset) - record.totalLength()
@@ -102,7 +105,8 @@ func (lm *LogMgr) Log(record *record) error {
 		return fmt.Errorf("failed to write record: %w", err)
 	}
 
-	err = lm.logPage.WriteInt(0, recPos)
+	newOffset := recPos
+	err = lm.logPage.WriteInt(0, newOffset)
 	if err != nil {
 		return fmt.Errorf("failed to write new offset: %w", err)
 	}
@@ -110,6 +114,16 @@ func (lm *LogMgr) Log(record *record) error {
 	lm.latestLSN++
 
 	return nil
+}
+
+// Iterator returns an iterator that iterates over the log records in reverse order.
+func (lm *LogMgr) Iterator() (*iterator, error) {
+	err := lm.Flush()
+	if err != nil {
+		return nil, err
+	}
+
+	return newIterator(lm.fm, *lm.currentBlock)
 }
 
 // Flush writes the log page to disk.

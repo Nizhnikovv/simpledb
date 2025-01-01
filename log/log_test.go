@@ -69,7 +69,7 @@ func TestLog(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		record          *record
+		record          *Record
 		expectedLogSize int
 		expectedOffset  int
 	}{
@@ -117,9 +117,56 @@ func TestLog(t *testing.T) {
 			}
 		})
 	}
+}
 
-	err := logMgr.Flush()
+func TestIterator(t *testing.T) {
+	dataDir := "testdata"
+	logFile := "testlogfile2"
+
+	fileMgr := file.NewFileMgr(dataDir, 32)
+	t.Cleanup(func() {
+		fileMgr.Close()
+		os.Remove(filepath.Join(dataDir, logFile))
+	})
+
+	logMgr := NewLogMgr(fileMgr, logFile)
+
+	records := []*Record{
+		NewRecord([]byte("record one")),
+		NewRecord([]byte("record two")),
+		NewRecord([]byte("record three")),
+		NewRecord([]byte("record four")),
+		NewRecord([]byte("record five")),
+		NewRecord([]byte("record six")),
+		NewRecord([]byte("record seven")),
+		NewRecord([]byte("record eight")),
+		NewRecord([]byte("record nine")),
+	}
+
+	for _, record := range records {
+		err := logMgr.Log(record)
+		if err != nil {
+			t.Fatalf("Log failed: %v", err)
+		}
+	}
+
+	iter, err := logMgr.Iterator()
 	if err != nil {
-		t.Fatalf("Flush failed: %v", err)
+		t.Fatalf("Iterator failed: %v", err)
+	}
+
+	for i := 8; i >= 0; i-- {
+		if !iter.HasNext() {
+			t.Fatalf("HasNext returned false, want true")
+		}
+
+		rec, err := iter.Next()
+		if err != nil {
+			t.Fatalf("Next failed: %v", err)
+		}
+
+		if string(rec.Data) != string(records[i].Data) {
+			t.Errorf("record data, got = %s, want %s", rec.Data, records[i].Data)
+		}
 	}
 }

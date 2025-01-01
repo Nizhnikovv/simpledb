@@ -29,7 +29,7 @@ func (p *Page) Write(offset int, data []byte) (int, error) {
 // WriteInt writes an integer value to the page at the specified offset.
 func (p *Page) WriteInt(offset int, value int) error {
 	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, uint32(value))
+	binary.NativeEndian.PutUint32(b, uint32(value))
 
 	_, err := p.Write(offset, b)
 	return err
