@@ -10,7 +10,8 @@ import (
 var ErrBlockOutOfBound = fmt.Errorf("block number greater than file size")
 
 type FileMgr struct {
-	blockSize   int
+	BlockSize int
+
 	dataDir     string
 	openedFiles map[string]*os.File
 
@@ -19,7 +20,7 @@ type FileMgr struct {
 
 func NewFileMgr(dataDir string, blockSize int) *FileMgr {
 	return &FileMgr{
-		blockSize:   blockSize,
+		BlockSize:   blockSize,
 		dataDir:     dataDir,
 		openedFiles: make(map[string]*os.File),
 	}
@@ -35,7 +36,7 @@ func (fm *FileMgr) Read(blockID *BlockID, p *Page) (int, error) {
 		return 0, err
 	}
 
-	size, err := fm.fileSize(f)
+	size, err := fm.FileSize(blockID.Filename)
 	if err != nil {
 		return 0, err
 	}
@@ -44,7 +45,7 @@ func (fm *FileMgr) Read(blockID *BlockID, p *Page) (int, error) {
 		return 0, ErrBlockOutOfBound
 	}
 
-	n, err := f.ReadAt(p.Bytes(), int64(blockID.Number*fm.blockSize))
+	n, err := f.ReadAt(p.Bytes(), int64(blockID.Number*fm.BlockSize))
 	if err != nil && err.Error() != "EOF" {
 		return 0, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -62,7 +63,7 @@ func (fm *FileMgr) Write(blockID *BlockID, p *Page) (int, error) {
 		return 0, err
 	}
 
-	size, err := fm.fileSize(f)
+	size, err := fm.FileSize(blockID.Filename)
 	if err != nil {
 		return 0, err
 	}
@@ -71,7 +72,7 @@ func (fm *FileMgr) Write(blockID *BlockID, p *Page) (int, error) {
 		return 0, ErrBlockOutOfBound
 	}
 
-	n, err := f.WriteAt(p.Bytes(), int64(blockID.Number*fm.blockSize))
+	n, err := f.WriteAt(p.Bytes(), int64(blockID.Number*fm.BlockSize))
 	if err != nil && err.Error() != "EOF" {
 		return 0, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -95,13 +96,15 @@ func (fm *FileMgr) Close() error {
 }
 
 // fileLength returns the number of blocks in the specified file.
-func (fm *FileMgr) fileSize(file *os.File) (int, error) {
-	fi, err := file.Stat()
+func (fm *FileMgr) FileSize(fileName string) (int, error) {
+	file, err := fm.getFile(fileName)
+
+	fileInfo, err := file.Stat()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get file info: %w", err)
 	}
 
-	return int(fi.Size() / int64(fm.blockSize)), nil
+	return int(fileInfo.Size() / int64(fm.BlockSize)), nil
 }
 
 // getFile returns the file with the specified filename, creating it if it does not exist.
