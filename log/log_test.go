@@ -69,7 +69,7 @@ func TestLog(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		record          *Record
+		record          *record
 		expectedLogSize int
 		expectedOffset  int
 	}{
@@ -116,6 +116,10 @@ func TestLog(t *testing.T) {
 				t.Errorf("logSize = %d, want %d", logSize, tt.expectedLogSize)
 			}
 		})
+	}
 
+	err := logMgr.Flush()
+	if err != nil {
+		t.Fatalf("Flush failed: %v", err)
 	}
 }

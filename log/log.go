@@ -3,6 +3,7 @@ package log
 import (
 	"encoding/binary"
 	"fmt"
+	"sync"
 
 	"github.com/inelpandzic/simpledb/file"
 )
@@ -16,6 +17,8 @@ type LogMgr struct {
 	currentBlock     *file.BlockID
 	latestLSN        int
 	latestDurableLSN int
+
+	mu sync.Mutex
 }
 
 func NewLogMgr(fm *file.FileMgr, logFile string) *LogMgr {
@@ -32,11 +35,12 @@ func NewLogMgr(fm *file.FileMgr, logFile string) *LogMgr {
 	}
 
 	if logSize == 0 {
-		offsetBytes := make([]byte, 4)
-		endian.PutUint32(offsetBytes, uint32(fm.BlockSize))
-		logPage.Write(0, offsetBytes)
+		err := logPage.WriteInt(0, fm.BlockSize)
+		if err != nil {
+			panic(err)
+		}
 
-		_, err := fm.Write(currentBlock, logPage)
+		_, err = fm.Write(currentBlock, logPage)
 		if err != nil {
 			panic(err)
 		}
@@ -58,7 +62,10 @@ func NewLogMgr(fm *file.FileMgr, logFile string) *LogMgr {
 }
 
 // Log logs the record to the log page.
-func (lm *LogMgr) Log(record *Record) error {
+func (lm *LogMgr) Log(record *record) error {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+
 	offsetBytes := make([]byte, 4)
 	lm.logPage.Read(0, offsetBytes)
 
@@ -71,25 +78,31 @@ func (lm *LogMgr) Log(record *Record) error {
 			return err
 		}
 
-		// create a new block by incrementing the block number
-		// filename stays the same
+		// create a new blockID by incrementing the block number
 		lm.currentBlock.Number++
-		offset = uint32(lm.fm.BlockSize)
 
-		endian.PutUint32(offsetBytes, offset)
-		lm.logPage.Write(0, offsetBytes)
+		// We can reuse the existing log page and overwrite it with the new data,
+		// but a fresh page is created here for simplicity and ease of testing and inspection.
+		// The old page will be garbage collected.
+		lm.logPage = file.NewPage(lm.fm.BlockSize)
+
+		offset = uint32(lm.fm.BlockSize)
+		lm.logPage.WriteInt(0, int(offset))
 		_, err = lm.fm.Write(lm.currentBlock, lm.logPage)
+		if err != nil {
+			return fmt.Errorf("failed to write log page: %w", err)
+		}
+
 	}
 
-	recPos := int(offset) - record.TotalLength()
+	recPos := int(offset) - record.totalLength()
 
-	_, err := lm.logPage.Write(recPos, record.Bytes())
+	_, err := lm.logPage.Write(recPos, record.bytes())
 	if err != nil {
 		return fmt.Errorf("failed to write record: %w", err)
 	}
 
-	endian.PutUint32(offsetBytes, uint32(recPos))
-	_, err = lm.logPage.Write(0, offsetBytes)
+	err = lm.logPage.WriteInt(0, recPos)
 	if err != nil {
 		return fmt.Errorf("failed to write new offset: %w", err)
 	}
@@ -107,5 +120,6 @@ func (lm *LogMgr) Flush() error {
 	}
 
 	lm.latestDurableLSN = lm.latestLSN
+
 	return nil
 }

@@ -9,7 +9,7 @@ func TestRecordBytes(t *testing.T) {
 	r := NewRecord(data)
 	expected := []byte{4, 0, 0, 0, 't', 'e', 's', 't'}
 
-	got := r.Bytes()
+	got := r.bytes()
 
 	if !bytesEqual(got, expected) {
 		t.Errorf("Bytes = %v, want %v", got, expected)

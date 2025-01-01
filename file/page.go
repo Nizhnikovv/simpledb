@@ -1,6 +1,7 @@
 package file
 
 import (
+	"encoding/binary"
 	"errors"
 )
 
@@ -15,6 +16,7 @@ func NewPage(size int) *Page {
 	}
 }
 
+// Write copies data from the data slice to the page at the specified offset.
 func (p *Page) Write(offset int, data []byte) (int, error) {
 	if offset+len(data) > p.Size() {
 		return 0, errors.New("data exceeds page bounds")
@@ -24,11 +26,21 @@ func (p *Page) Write(offset int, data []byte) (int, error) {
 	return n, nil
 }
 
+// WriteInt writes an integer value to the page at the specified offset.
+func (p *Page) WriteInt(offset int, value int) error {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, uint32(value))
+
+	_, err := p.Write(offset, b)
+	return err
+}
+
 // Read copies data from the page at the specified offset and writes it to the data slice.
 func (p *Page) Read(offset int, data []byte) int {
 	return copy(data, p.bytes[offset:])
 }
 
+// Bytes returns the byte of the page.
 func (p *Page) Bytes() []byte {
 	return p.bytes
 }
