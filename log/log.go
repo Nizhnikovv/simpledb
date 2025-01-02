@@ -10,6 +10,9 @@ import (
 
 var endian = binary.NativeEndian
 
+// intBytesSize is the size of the integer in bytes.
+const intBytesSize = 4
+
 type LogMgr struct {
 	logFile          string
 	fm               *file.FileMgr
@@ -66,12 +69,12 @@ func (lm *LogMgr) Log(record *Record) error {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
-	offsetBytes := make([]byte, 4)
+	offsetBytes := make([]byte, intBytesSize)
 	lm.logPage.Read(0, offsetBytes)
 
 	offset := endian.Uint32(offsetBytes) // offset where the last record starts
 
-	buffCap := int(offset) - 4
+	buffCap := int(offset) - intBytesSize
 	if record.totalLength() > buffCap {
 		err := lm.Flush()
 		if err != nil {
@@ -89,7 +92,6 @@ func (lm *LogMgr) Log(record *Record) error {
 		if err != nil {
 			return fmt.Errorf("failed to write log page: %w", err)
 		}
-
 
 		offset = uint32(lm.fm.BlockSize)
 		err = lm.logPage.WriteInt(0, int(offset))
