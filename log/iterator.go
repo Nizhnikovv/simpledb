@@ -60,7 +60,7 @@ func (i *iterator) Next() (*Record, error) {
 	i.page.Read(i.currentPos+intBytesSize, data)
 
 	rec := &Record{
-		length: int(length),
+		Length: int(length),
 		Data:   data,
 	}
 
