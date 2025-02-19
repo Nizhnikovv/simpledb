@@ -63,18 +63,9 @@ func (fm *FileMgr) Write(blockID *BlockID, p *Page) (int, error) {
 		return 0, err
 	}
 
-	size, err := fm.FileSize(blockID.Filename)
-	if err != nil {
-		return 0, err
-	}
-
-	if blockID.Number > size {
-		return 0, ErrBlockOutOfBound
-	}
-
 	n, err := f.WriteAt(p.Bytes(), int64(blockID.Number*fm.BlockSize))
 	if err != nil && err.Error() != "EOF" {
-		return 0, fmt.Errorf("failed to read file: %w", err)
+		return 0, fmt.Errorf("failed to write to file: %w", err)
 	}
 
 	return n, nil
