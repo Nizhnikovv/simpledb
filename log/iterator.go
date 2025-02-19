@@ -21,14 +21,10 @@ func newIterator(fm *file.FileMgr, blockID file.BlockID) (*iterator, error) {
 		return nil, fmt.Errorf("failed to read block: %w", err)
 	}
 
-	currentPosBytes := make([]byte, intBytesSize)
-	page.Read(0, currentPosBytes)
-	currentPos := int(endian.Uint32(currentPosBytes))
-
 	return &iterator{
 		fm:           fm,
 		currentBlock: &blockID,
-		currentPos:   currentPos,
+		currentPos:   page.ReadInt(0),
 		page:         page,
 	}, nil
 }
@@ -47,15 +43,10 @@ func (i *iterator) Next() (*Record, error) {
 			return nil, fmt.Errorf("failed to read next block: %w", err)
 		}
 
-		currentPosBytes := make([]byte, intBytesSize)
-		i.page.Read(0, currentPosBytes)
-		i.currentPos = int(endian.Uint32(currentPosBytes))
+		i.currentPos = i.page.ReadInt(0)
 	}
 
-	lengthBytes := make([]byte, intBytesSize)
-	i.page.Read(i.currentPos, lengthBytes)
-	length := endian.Uint32(lengthBytes)
-
+	length := i.page.ReadInt(i.currentPos)
 	data := make([]byte, length)
 	i.page.Read(i.currentPos+intBytesSize, data)
 

@@ -70,14 +70,11 @@ func (lm *LogMgr) Log(record *Record) (int, error) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
-	offsetBytes := make([]byte, intBytesSize)
-	lm.logPage.Read(0, offsetBytes)
-
-	offset := endian.Uint32(offsetBytes) // offset where the last record starts
+	offset := lm.logPage.ReadInt(0) // offset where the last record starts
 
 	// Buffer capacity, the space left in the log page,
 	// is the offset minus the bytes that hold the offset itself.
-	buffCap := int(offset) - intBytesSize
+	buffCap := offset - intBytesSize
 	if record.totalLength() > buffCap {
 		err := lm.Flush()
 		if err != nil {
@@ -96,14 +93,14 @@ func (lm *LogMgr) Log(record *Record) (int, error) {
 			return 0, fmt.Errorf("failed to write log page: %w", err)
 		}
 
-		offset = uint32(lm.fm.BlockSize)
-		err = lm.logPage.WriteInt(0, int(offset))
+		offset = lm.fm.BlockSize
+		err = lm.logPage.WriteInt(0, offset)
 		if err != nil {
 			return 0, fmt.Errorf("failed to write new offset: %w", err)
 		}
 	}
 
-	recPos := int(offset) - record.totalLength()
+	recPos := offset - record.totalLength()
 
 	_, err := lm.logPage.Write(recPos, record.bytes())
 	if err != nil {

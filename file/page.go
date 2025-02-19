@@ -35,6 +35,13 @@ func (p *Page) WriteInt(offset int, value int) error {
 	return err
 }
 
+// ReadInt reads an integer value from the page at the specified offset.
+func (p *Page) ReadInt(offset int) int {
+	b := make([]byte, 4)
+	p.Read(offset, b)
+	return int(binary.NativeEndian.Uint32(b))
+}
+
 // Read copies data from the page at the specified offset and writes it to the data slice.
 func (p *Page) Read(offset int, data []byte) int {
 	return copy(data, p.bytes[offset:])
