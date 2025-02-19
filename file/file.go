@@ -1,7 +1,9 @@
 package file
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -46,7 +48,7 @@ func (fm *FileMgr) Read(blockID *BlockID, p *Page) (int, error) {
 	}
 
 	n, err := f.ReadAt(p.Bytes(), int64(blockID.Number*fm.BlockSize))
-	if err != nil && err.Error() != "EOF" {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return 0, fmt.Errorf("failed to read file: %w", err)
 	}
 
@@ -64,7 +66,7 @@ func (fm *FileMgr) Write(blockID *BlockID, p *Page) (int, error) {
 	}
 
 	n, err := f.WriteAt(p.Bytes(), int64(blockID.Number*fm.BlockSize))
-	if err != nil && err.Error() != "EOF" {
+	if err != nil {
 		return 0, fmt.Errorf("failed to write to file: %w", err)
 	}
 
@@ -86,9 +88,12 @@ func (fm *FileMgr) Close() error {
 	return nil
 }
 
-// fileLength returns the number of blocks in the specified file.
+// FileSize returns the number of blocks in the specified file.
 func (fm *FileMgr) FileSize(fileName string) (int, error) {
 	file, err := fm.getFile(fileName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get file: %w", err)
+	}
 
 	fileInfo, err := file.Stat()
 	if err != nil {
